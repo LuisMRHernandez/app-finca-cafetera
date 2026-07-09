@@ -1,70 +1,72 @@
 import 'package:flutter/material.dart';
 import '../utils/constants.dart';
-import 'mi_finca_screen.dart';
-import 'foto_finca_screen.dart';
-import 'mi_perfil_screen.dart';
-import 'calidad_screen.dart';
-import 'beneficio_screen.dart';
+import 'fermentacion_screen.dart';
+import 'secado_screen.dart';
+import 'grafica_fermentacion_screen.dart';
+import 'grafica_secado_screen.dart';
+import 'historial_fermentacion_screen.dart';
 
-class HomeScreen extends StatelessWidget {
-  final String nombreUsuario;
+class BeneficioScreen extends StatelessWidget {
   final String token;
-  final String email;
-
-  const HomeScreen(
-      {super.key,
-      required this.nombreUsuario,
-      required this.token,
-      required this.email});
+  const BeneficioScreen({super.key, required this.token});
 
   @override
   Widget build(BuildContext context) {
     final items = [
       _Item(
-          'Mi Finca',
-          'Información y detalles',
-          Icons.terrain_rounded,
-          const Color(0xFFE8F5E0),
-          AppColors.verdeMedio,
-          () => Navigator.push(context,
-              _r(MiFincaScreen(token: token, nombreUsuario: nombreUsuario)))),
+        titulo: 'Fermentación',
+        subtitulo: 'Registrar pH · Brix · Temperatura',
+        icono: Icons.science_rounded,
+        colorFondo: const Color(0xFFE8F5E0),
+        colorIcono: AppColors.verdeClaro,
+        onTap: () =>
+            Navigator.push(context, _r(FermentacionScreen(token: token))),
+      ),
       _Item(
-          'Beneficio',
-          'Fermentación · Secado · Historial',
-          Icons.agriculture_rounded,
-          const Color(0xFFE8F5E0),
-          AppColors.verdeClaro,
-          () => Navigator.push(context, _r(BeneficioScreen(token: token)))),
+        titulo: 'Secado',
+        subtitulo: 'Registrar humedad y rendimiento',
+        icono: Icons.wb_sunny_rounded,
+        colorFondo: const Color(0xFFE3F2FD),
+        colorIcono: const Color(0xFF1565C0),
+        onTap: () => Navigator.push(context, _r(SecadoScreen(token: token))),
+      ),
       _Item(
-          'Calidad de Café',
-          'Evaluación por cosecha',
-          Icons.star_rounded,
-          const Color(0xFFFFF8EC),
-          AppColors.dorado,
-          () => Navigator.push(context, _r(CalidadScreen(token: token)))),
+        titulo: 'Gráficas Fermentación',
+        subtitulo: 'Visualizar pH · Brix · Temperatura',
+        icono: Icons.show_chart_rounded,
+        colorFondo: const Color(0xFFE8F5E0),
+        colorIcono: AppColors.verdeMedio,
+        onTap: () => Navigator.push(
+            context, _r(GraficaFermentacionScreen(token: token))),
+      ),
       _Item(
-          'Foto Finca',
-          'Actualizar imagen',
-          Icons.camera_alt_rounded,
-          const Color(0xFFF3E5F5),
-          const Color(0xFF6A1B9A),
-          () => Navigator.push(context, _r(FotoFincaScreen(token: token)))),
+        titulo: 'Gráficas Secado',
+        subtitulo: 'Visualizar humedad y rendimiento',
+        icono: Icons.bar_chart_rounded,
+        colorFondo: const Color(0xFFE3F2FD),
+        colorIcono: const Color(0xFF1565C0),
+        onTap: () =>
+            Navigator.push(context, _r(GraficaSecadoScreen(token: token))),
+      ),
       _Item(
-          'Mi Perfil',
-          'Datos del usuario',
-          Icons.person_rounded,
-          const Color(0xFFE8F5E0),
-          AppColors.verde,
-          () => Navigator.push(context,
-              _r(MiPerfilScreen(nombreUsuario: nombreUsuario, email: email)))),
+        titulo: 'Historial',
+        subtitulo: 'Ver registros anteriores',
+        icono: Icons.history_rounded,
+        colorFondo: const Color(0xFFFCF3E3),
+        colorIcono: const Color(0xFFE65100),
+        onTap: () => Navigator.push(
+            context, _r(HistorialFermentacionScreen(token: token))),
+      ),
     ];
 
     return Scaffold(
       body: CustomScrollView(slivers: [
+        // ── AppBar ───────────────────────────────────────
         SliverAppBar(
-          expandedHeight: 170,
+          expandedHeight: 160,
           pinned: true,
           backgroundColor: AppColors.verde,
+          leading: const BackButton(),
           flexibleSpace: FlexibleSpaceBar(
             background: Container(
               decoration: const BoxDecoration(
@@ -86,18 +88,18 @@ class HomeScreen extends StatelessWidget {
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
                                   color: AppColors.dorado.withOpacity(0.35))),
-                          child: const Icon(Icons.coffee_rounded,
+                          child: const Icon(Icons.agriculture_rounded,
                               color: AppColors.doradoClaro, size: 26)),
                       const SizedBox(width: 14),
                       Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Hola, $nombreUsuario 👋',
-                                style: const TextStyle(
+                            const Text('Proceso de Beneficio',
+                                style: TextStyle(
                                     color: AppColors.blanco,
                                     fontSize: 19,
                                     fontWeight: FontWeight.w700)),
-                            Text('Sistema de monitoreo cafetero',
+                            Text('Fermentación · Secado · Historial',
                                 style: TextStyle(
                                     color: AppColors.blanco.withOpacity(0.6),
                                     fontSize: 12)),
@@ -107,12 +109,16 @@ class HomeScreen extends StatelessWidget {
             ),
           ),
         ),
+
+        // ── Lista de opciones ────────────────────────────
         SliverPadding(
           padding: const EdgeInsets.fromLTRB(20, 24, 20, 32),
           sliver: SliverList(
-              delegate: SliverChildBuilderDelegate(
-                  (ctx, i) => _buildCard(items[i], i),
-                  childCount: items.length)),
+            delegate: SliverChildBuilderDelegate(
+              (ctx, i) => _buildCard(items[i], i),
+              childCount: items.length,
+            ),
+          ),
         ),
       ]),
     );
@@ -121,7 +127,7 @@ class HomeScreen extends StatelessWidget {
   Widget _buildCard(_Item item, int index) {
     return TweenAnimationBuilder<double>(
       tween: Tween(begin: 0, end: 1),
-      duration: Duration(milliseconds: 270 + index * 50),
+      duration: Duration(milliseconds: 270 + index * 55),
       curve: Curves.easeOut,
       builder: (ctx, v, child) => Opacity(
           opacity: v,
@@ -181,6 +187,11 @@ class _Item {
   final IconData icono;
   final Color colorFondo, colorIcono;
   final VoidCallback onTap;
-  const _Item(this.titulo, this.subtitulo, this.icono, this.colorFondo,
-      this.colorIcono, this.onTap);
+  const _Item(
+      {required this.titulo,
+      required this.subtitulo,
+      required this.icono,
+      required this.colorFondo,
+      required this.colorIcono,
+      required this.onTap});
 }

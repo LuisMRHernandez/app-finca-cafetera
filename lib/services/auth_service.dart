@@ -1,31 +1,22 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
-
-import '../utils/constants.dart';
+import 'api_service.dart';
 
 class AuthService {
   Future<Map<String, dynamic>> login(String email, String password) async {
-    try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/login'),
-        headers: {'Content-Type': 'application/json'},
-        body: jsonEncode({'email': email, 'password': password}),
-      );
+    final res = await ApiService.login(email, password);
+    if (!res['success']) return res;
 
-      final data = jsonDecode(response.body);
+    final data = res['data'];
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('token', data['access_token'] ?? '');
+    await prefs.setString('nombre_usuario', data['usuario'] ?? '');
+    await prefs.setString('email', email);
 
-      if (response.statusCode == 200) {
-        final prefs = await SharedPreferences.getInstance();
+    return {'success': true, 'usuario': data['usuario'] ?? ''};
+  }
 
-        await prefs.setString('token', data['access_token']);
-
-        return {'success': true, 'usuario': data['usuario']};
-      }
-
-      return {'success': false, 'message': data['detail'] ?? 'Error login'};
-    } catch (e) {
-      return {'success': false, 'message': e.toString()};
-    }
+  Future<void> logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
   }
 }

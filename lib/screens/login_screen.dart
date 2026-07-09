@@ -1,139 +1,138 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+
 import '../services/api_service.dart';
+import '../utils/constants.dart';
 import 'home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
-
   @override
   State<LoginScreen> createState() => _LoginScreenState();
 }
 
 class _LoginScreenState extends State<LoginScreen>
     with SingleTickerProviderStateMixin {
-  final emailController = TextEditingController();
-  final passwordController = TextEditingController();
-  bool cargando = false;
-  bool verPassword = false;
-  late AnimationController _animController;
-  late Animation<double> _fadeAnim;
-  late Animation<Offset> _slideAnim;
+  final _emailCtrl = TextEditingController();
+  final _passCtrl = TextEditingController();
+  bool _cargando = false;
+  bool _verPass = false;
+  late AnimationController _anim;
+  late Animation<double> _fade;
+  late Animation<Offset> _slide;
 
   @override
   void initState() {
     super.initState();
-    _animController = AnimationController(
+    _anim = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 700),
+      duration: const Duration(milliseconds: 650),
     );
-    _fadeAnim = CurvedAnimation(parent: _animController, curve: Curves.easeOut);
-    _slideAnim = Tween<Offset>(
-      begin: const Offset(0, 0.18),
+    _fade = CurvedAnimation(parent: _anim, curve: Curves.easeOut);
+    _slide = Tween<Offset>(
+      begin: const Offset(0, 0.15),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animController, curve: Curves.easeOut));
-    _animController.forward();
+    ).animate(CurvedAnimation(parent: _anim, curve: Curves.easeOut));
+    _anim.forward();
   }
 
   @override
   void dispose() {
-    _animController.dispose();
-    emailController.dispose();
-    passwordController.dispose();
+    _anim.dispose();
+    _emailCtrl.dispose();
+    _passCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> login() async {
-    if (emailController.text.trim().isEmpty ||
-        passwordController.text.trim().isEmpty) {
-      _mostrarSnack("Por favor completa todos los campos");
+  Future<void> _login() async {
+    if (_emailCtrl.text.trim().isEmpty || _passCtrl.text.trim().isEmpty) {
+      _snack('Completa todos los campos');
       return;
     }
-    setState(() => cargando = true);
+    setState(() => _cargando = true);
 
-    final response = await ApiService.login(
-      emailController.text.trim(),
-      passwordController.text.trim(),
+    final res = await ApiService.login(
+      _emailCtrl.text.trim(),
+      _passCtrl.text.trim(),
     );
+    setState(() => _cargando = false);
 
-    setState(() => cargando = false);
+    if (res['success']) {
+      final data = res['data'];
+      final token = data['access_token'] ?? '';
+      final nombre = data['usuario'] ?? '';
+      final email = _emailCtrl.text.trim();
 
-    if (response["success"]) {
-      final nombreUsuario = response["data"]["usuario"] ?? "Usuario";
-      final token = response["data"]["access_token"] ?? "";
-      final email = emailController.text.trim();
-
-      // ── GUARDAR sesión en SharedPreferences ──────────────
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', token);
-      await prefs.setString('nombre_usuario', nombreUsuario);
+      await prefs.setString('nombre_usuario', nombre);
       await prefs.setString('email', email);
-      // ─────────────────────────────────────────────────────
 
       if (!mounted) return;
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(
           builder:
-              (_) => HomeScreen(
-                nombreUsuario: nombreUsuario,
-                token: token,
-                email: email,
-              ),
+              (_) =>
+                  HomeScreen(token: token, nombreUsuario: nombre, email: email),
         ),
       );
     } else {
-      _mostrarSnack(response["message"] ?? "Error al iniciar sesión");
+      _snack(res['message'] ?? 'Error al iniciar sesión');
     }
   }
 
-  void _mostrarSnack(String msg) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
-  }
+  void _snack(String msg) =>
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(msg)));
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF3E2723),
+      backgroundColor: AppColors.verde,
       body: Column(
         children: [
           // ── Hero superior ──────────────────────────────────
           Expanded(
-            flex: 2,
-            child: Container(
-              color: const Color(0xFF3E2723),
-              width: double.infinity,
-              child: SafeArea(
+            flex: 5,
+            child: SafeArea(
+              child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Container(
-                      width: 80,
-                      height: 80,
+                      width: 90,
+                      height: 90,
                       decoration: BoxDecoration(
-                        color: Colors.white.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(24),
+                        color: Colors.white.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(28),
+                        border: Border.all(
+                          color: AppColors.dorado.withOpacity(0.4),
+                          width: 1.5,
+                        ),
                       ),
                       child: const Icon(
                         Icons.coffee_rounded,
-                        size: 42,
-                        color: Color(0xFFEFEBE9),
+                        size: 46,
+                        color: AppColors.doradoClaro,
                       ),
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 20),
                     const Text(
-                      "Finca Cafetera",
+                      'Finca Cafetera',
                       style: TextStyle(
-                        color: Color(0xFFEFEBE9),
-                        fontSize: 26,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
+                        color: AppColors.blanco,
+                        fontSize: 28,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.3,
                       ),
                     ),
                     const SizedBox(height: 6),
-                    const Text(
-                      "Sistema de monitoreo cafetero",
-                      style: TextStyle(color: Color(0xFFBCAAA4), fontSize: 14),
+                    Text(
+                      'Sistema de monitoreo cafetero',
+                      style: TextStyle(
+                        color: AppColors.blanco.withOpacity(0.6),
+                        fontSize: 14,
+                      ),
                     ),
                   ],
                 ),
@@ -143,16 +142,16 @@ class _LoginScreenState extends State<LoginScreen>
 
           // ── Formulario ─────────────────────────────────────
           Expanded(
-            flex: 3,
+            flex: 6,
             child: FadeTransition(
-              opacity: _fadeAnim,
+              opacity: _fade,
               child: SlideTransition(
-                position: _slideAnim,
+                position: _slide,
                 child: Container(
                   width: double.infinity,
                   padding: const EdgeInsets.fromLTRB(28, 32, 28, 24),
                   decoration: const BoxDecoration(
-                    color: Color(0xFFFAF8F5),
+                    color: AppColors.crema,
                     borderRadius: BorderRadius.only(
                       topLeft: Radius.circular(32),
                       topRight: Radius.circular(32),
@@ -163,78 +162,79 @@ class _LoginScreenState extends State<LoginScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          "Iniciar sesión",
+                          'Iniciar sesión',
                           style: TextStyle(
                             fontSize: 22,
-                            fontWeight: FontWeight.w600,
-                            color: Color(0xFF3E2723),
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.texto,
                           ),
                         ),
                         const SizedBox(height: 4),
                         const Text(
-                          "Ingresa tus credenciales para continuar",
+                          'Ingresa tus credenciales para continuar',
                           style: TextStyle(
                             fontSize: 13,
-                            color: Color(0xFF8D6E63),
+                            color: AppColors.textoSuave,
                           ),
                         ),
                         const SizedBox(height: 28),
+
                         TextField(
-                          controller: emailController,
+                          controller: _emailCtrl,
                           keyboardType: TextInputType.emailAddress,
                           decoration: const InputDecoration(
-                            labelText: "Correo electrónico",
+                            labelText: 'Correo electrónico',
                             prefixIcon: Icon(
                               Icons.mail_outline_rounded,
-                              color: Color(0xFF8D6E63),
+                              color: AppColors.textoSuave,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 14),
+
                         TextField(
-                          controller: passwordController,
-                          obscureText: !verPassword,
+                          controller: _passCtrl,
+                          obscureText: !_verPass,
+                          onSubmitted: (_) => _login(),
                           decoration: InputDecoration(
-                            labelText: "Contraseña",
+                            labelText: 'Contraseña',
                             prefixIcon: const Icon(
                               Icons.lock_outline_rounded,
-                              color: Color(0xFF8D6E63),
+                              color: AppColors.textoSuave,
                             ),
                             suffixIcon: IconButton(
                               icon: Icon(
-                                verPassword
+                                _verPass
                                     ? Icons.visibility_off_outlined
                                     : Icons.visibility_outlined,
-                                color: const Color(0xFF8D6E63),
+                                color: AppColors.textoSuave,
                               ),
                               onPressed:
-                                  () => setState(
-                                    () => verPassword = !verPassword,
-                                  ),
+                                  () => setState(() => _verPass = !_verPass),
                             ),
                           ),
-                          onSubmitted: (_) => login(),
                         ),
                         const SizedBox(height: 28),
+
                         SizedBox(
                           width: double.infinity,
                           child: ElevatedButton(
-                            onPressed: cargando ? null : login,
+                            onPressed: _cargando ? null : _login,
                             child:
-                                cargando
+                                _cargando
                                     ? const SizedBox(
-                                      height: 20,
                                       width: 20,
+                                      height: 20,
                                       child: CircularProgressIndicator(
                                         strokeWidth: 2,
-                                        color: Color(0xFFEFEBE9),
+                                        color: AppColors.blanco,
                                       ),
                                     )
                                     : const Row(
                                       mainAxisAlignment:
                                           MainAxisAlignment.center,
                                       children: [
-                                        Text("Ingresar"),
+                                        Text('Ingresar'),
                                         SizedBox(width: 8),
                                         Icon(
                                           Icons.arrow_forward_rounded,

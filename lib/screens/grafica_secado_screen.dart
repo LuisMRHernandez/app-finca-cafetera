@@ -4,27 +4,25 @@ import '../services/api_service.dart';
 import '../utils/constants.dart';
 import '../widgets/widgets.dart';
 
-class GraficaFermentacionScreen extends StatefulWidget {
+class GraficaSecadoScreen extends StatefulWidget {
   final String token;
-  const GraficaFermentacionScreen({super.key, required this.token});
+  const GraficaSecadoScreen({super.key, required this.token});
   @override
-  State<GraficaFermentacionScreen> createState() =>
-      _GraficaFermentacionScreenState();
+  State<GraficaSecadoScreen> createState() => _GraficaSecadoScreenState();
 }
 
-class _GraficaFermentacionScreenState extends State<GraficaFermentacionScreen> {
+class _GraficaSecadoScreenState extends State<GraficaSecadoScreen> {
   List _datos = [];
   bool _cargando = true;
   int _tabActiva = 0;
   late TooltipBehavior _tooltip;
 
+  // Los dos campos que grafica secado
   static const _tabs = [
-    _Tab('pH', 'ph', Icons.water_drop_rounded, Color(0xFF1565C0),
-        Color(0xFFE3F2FD), 'pH'),
-    _Tab('Brix', 'brix', Icons.speed_rounded, AppColors.verdeClaro,
-        Color(0xFFE8F5E0), '°Bx'),
-    _Tab('Temp', 'temperatura', Icons.thermostat_rounded, Color(0xFFBF360C),
-        Color(0xFFFBE9E7), '°C'),
+    _Tab('Humedad', 'humedad', Icons.water_drop_rounded, Color(0xFF1565C0),
+        Color(0xFFE3F2FD), '%'),
+    _Tab('Rendimiento', 'factor_rendimiento', Icons.speed_rounded,
+        AppColors.verdeClaro, Color(0xFFE8F5E0), ''),
   ];
 
   @override
@@ -41,8 +39,6 @@ class _GraficaFermentacionScreenState extends State<GraficaFermentacionScreen> {
 
   Future<void> _cargar() async {
     setState(() => _cargando = true);
-
-    // Paso 1: obtener el id de la finca del usuario
     final fRes = await ApiService.obtenerMiFinca(widget.token);
     if (!fRes['success']) {
       setState(() => _cargando = false);
@@ -50,17 +46,12 @@ class _GraficaFermentacionScreenState extends State<GraficaFermentacionScreen> {
     }
     final fincaId = fRes['data']['id'] as int;
 
-    // Paso 2: GET /fermentacion/grafica/{finca_id}
-    // Devuelve lista con: fecha, brix, ph, temperatura
-    final res = await ApiService.obtenerDatosGrafica(widget.token, fincaId);
+    final res = await ApiService.obtenerGraficaSecado(widget.token, fincaId);
     if (res['success']) {
       final lista = List<Map<String, dynamic>>.from(res['data'] as List);
-      // Ordenar por fecha ascendente para que la gráfica vaya de izq. a der.
-      lista.sort((a, b) {
-        final fa = (a['fecha'] ?? '').toString();
-        final fb = (b['fecha'] ?? '').toString();
-        return fa.compareTo(fb);
-      });
+      lista.sort((a, b) => (a['fecha'] ?? '')
+          .toString()
+          .compareTo((b['fecha'] ?? '').toString()));
       setState(() {
         _datos = lista;
         _cargando = false;
@@ -73,31 +64,17 @@ class _GraficaFermentacionScreenState extends State<GraficaFermentacionScreen> {
     }
   }
 
-  // La API devuelve fecha como "2026-06-30 20:57" (con espacio)
-  // Para el eje X mostramos "30 20:57", para la tabla "30/06 20:57"
   String _fechaEje(dynamic raw) {
     final s = (raw ?? '').toString().trim();
-    // Formato: "2026-06-30 20:57" → día[8:10] + espacio + hora[11:16]
-    if (s.length >= 16) {
-      final dia = s.substring(8, 10);
-      final hora = s.substring(11, 16);
-      return '$dia\n$hora';
-    }
+    if (s.length >= 16) return '${s.substring(8, 10)}\n${s.substring(11, 16)}';
     if (s.length >= 10) return s.substring(5, 10);
     return s;
   }
 
   String _fechaTabla(dynamic raw) {
     final s = (raw ?? '').toString().trim();
-    // Devuelve "30/06 20:57"
     if (s.length >= 16) {
-      final dia = s.substring(8, 10);
-      final mes = s.substring(5, 7);
-      final hora = s.substring(11, 16);
-      return '$dia/$mes $hora';
-    }
-    if (s.length >= 10) {
-      return '${s.substring(8, 10)}/${s.substring(5, 7)}/${s.substring(0, 4)}';
+      return '${s.substring(8, 10)}/${s.substring(5, 7)} ${s.substring(11, 16)}';
     }
     return s;
   }
@@ -138,7 +115,7 @@ class _GraficaFermentacionScreenState extends State<GraficaFermentacionScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Gráficas'),
+        title: const Text('Gráficas de Secado'),
         leading: const BackButton(),
         actions: [
           IconButton(
@@ -148,9 +125,8 @@ class _GraficaFermentacionScreenState extends State<GraficaFermentacionScreen> {
       body: _datos.isEmpty
           ? const EstadoVacio(
               icono: Icons.bar_chart_rounded,
-              titulo: 'Sin datos para graficar',
-              subtitulo:
-                  'Registra datos de fermentación\npara ver las gráficas')
+              titulo: 'Sin datos de secado',
+              subtitulo: 'Registra datos de secado\npara ver las gráficas')
           : Column(children: [
               // ── Selector tabs ─────────────────────────────
               Container(
@@ -259,7 +235,7 @@ class _GraficaFermentacionScreenState extends State<GraficaFermentacionScreen> {
                                     xValueMapper: (d, _) =>
                                         _fechaEje(d['fecha']),
                                     yValueMapper: (d, _) => double.tryParse(
-                                        d[tab.campo].toString()),
+                                        (d[tab.campo] ?? 0).toString()),
                                     gradient: LinearGradient(
                                         colors: [
                                           tab.color.withOpacity(0.18),
@@ -276,7 +252,7 @@ class _GraficaFermentacionScreenState extends State<GraficaFermentacionScreen> {
                                     xValueMapper: (d, _) =>
                                         _fechaEje(d['fecha']),
                                     yValueMapper: (d, _) => double.tryParse(
-                                        d[tab.campo].toString()),
+                                        (d[tab.campo] ?? 0).toString()),
                                     color: tab.color,
                                     width: 2.5,
                                     splineType: SplineType.monotonic,
@@ -312,7 +288,7 @@ class _GraficaFermentacionScreenState extends State<GraficaFermentacionScreen> {
 
                     const SizedBox(height: 16),
 
-                    // Tabla
+                    // Tabla de datos
                     AppCard(
                         padding: EdgeInsets.zero,
                         child: Column(children: [
@@ -342,8 +318,6 @@ class _GraficaFermentacionScreenState extends State<GraficaFermentacionScreen> {
                                             fontWeight: FontWeight.w500))),
                               ])),
                           const Divider(height: 1, color: AppColors.borde),
-
-                          // Encabezados
                           Container(
                               color: AppColors.crema,
                               padding: const EdgeInsets.symmetric(
@@ -358,7 +332,10 @@ class _GraficaFermentacionScreenState extends State<GraficaFermentacionScreen> {
                                             color: AppColors.textoSuave))),
                                 Expanded(
                                     flex: 2,
-                                    child: Text('${tab.label} (${tab.unidad})',
+                                    child: Text(
+                                        tab.unidad.isNotEmpty
+                                            ? '${tab.label} (${tab.unidad})'
+                                            : tab.label,
                                         textAlign: TextAlign.center,
                                         style: const TextStyle(
                                             fontSize: 11,
@@ -366,7 +343,6 @@ class _GraficaFermentacionScreenState extends State<GraficaFermentacionScreen> {
                                             color: AppColors.textoSuave))),
                               ])),
                           const Divider(height: 1, color: AppColors.borde),
-
                           ...List.generate(_datos.length, (i) {
                             final d = _datos[i];
                             final val = d[tab.campo];
@@ -405,7 +381,10 @@ class _GraficaFermentacionScreenState extends State<GraficaFermentacionScreen> {
                                                     tab.color.withOpacity(0.1),
                                                 borderRadius:
                                                     BorderRadius.circular(20)),
-                                            child: Text('$val',
+                                            child: Text(
+                                                tab.unidad.isNotEmpty
+                                                    ? '$val ${tab.unidad}'
+                                                    : '$val',
                                                 style: TextStyle(
                                                     fontSize: 13,
                                                     fontWeight: FontWeight.w600,
@@ -433,7 +412,7 @@ class _Estadisticas extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final vals = datos
-        .map((d) => double.tryParse(d[tab.campo].toString()) ?? 0.0)
+        .map((d) => double.tryParse((d[tab.campo] ?? 0).toString()) ?? 0.0)
         .toList();
     final prom = vals.reduce((a, b) => a + b) / vals.length;
     final mn = vals.reduce((a, b) => a < b ? a : b);
@@ -480,7 +459,7 @@ class _StatCard extends StatelessWidget {
             Text(valor,
                 style: TextStyle(
                     fontSize: 18, fontWeight: FontWeight.w700, color: color)),
-            Text(unidad,
+            Text(unidad.isNotEmpty ? unidad : ' ',
                 style:
                     const TextStyle(fontSize: 10, color: AppColors.textoSuave)),
             const SizedBox(height: 2),
@@ -492,7 +471,6 @@ class _StatCard extends StatelessWidget {
       );
 }
 
-// ── Modelo de tab ─────────────────────────────────────────────
 class _Tab {
   final String label, campo, unidad;
   final IconData icono;
